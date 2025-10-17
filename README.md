@@ -14,9 +14,11 @@ A first-person shooter built with LÖVE (Lua).
 - **Mouse** - Look around
 - **Left Click** - Shoot
 - **Shift** - Run
+- **R** - Reload
 - **F3** - Toggle debug info
-- **ESC** - Release mouse
-- **Q** - Quit
+- **ESC** - Pause / Resume
+- **Enter** - Start (from menu)
+- **R / Q** - Restart / Quit (on death or win screens)
 
 ## Running
 

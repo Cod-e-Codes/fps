@@ -332,19 +332,30 @@ end
 -- Draw pause overlay
 function Renderer:drawPauseOverlay()
     local w, h = self.screenWidth, self.screenHeight
-    love.graphics.setColor(0, 0, 0, 0.5)
+    love.graphics.setColor(0, 0, 0, 0.6)
     love.graphics.rectangle("fill", 0, 0, w, h)
 
-    love.graphics.setColor(1, 1, 1, 1)
     love.graphics.setFont(self.font)
+    love.graphics.setColor(1, 1, 1, 1)
     local msg = "Paused"
-    local sub = "Press ESC to resume"
-    local msgW = self.font:getWidth(msg)
-    local msgH = self.font:getHeight()
-    love.graphics.print(msg, (w - msgW) / 2, h * 0.4)
+    local mW = self.font:getWidth(msg)
+    local mH = self.font:getHeight()
+    love.graphics.print(msg, (w - mW) / 2, h * 0.35)
+
     love.graphics.setFont(self.smallFont)
-    local subW = self.smallFont:getWidth(sub)
-    love.graphics.print(sub, (w - subW) / 2, h * 0.4 + msgH + 10)
+    love.graphics.setColor(1, 1, 1, 1)
+    local sub1 = "Press ESC to Resume"
+    local sub2 = "Press R to Restart"
+    local sub3 = "Press Q to Quit"
+    local y = h * 0.35 + mH + 12
+    local sW1 = self.smallFont:getWidth(sub1)
+    love.graphics.print(sub1, (w - sW1) / 2, y)
+    y = y + 18
+    local sW2 = self.smallFont:getWidth(sub2)
+    love.graphics.print(sub2, (w - sW2) / 2, y)
+    y = y + 18
+    local sW3 = self.smallFont:getWidth(sub3)
+    love.graphics.print(sub3, (w - sW3) / 2, y)
 end
 
 -- Draw start/menu overlay

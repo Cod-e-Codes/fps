@@ -155,6 +155,30 @@ function love.update(dt)
     end
 
     if game.state == "paused" then
+        -- Allow restart and quit while paused
+        if game.input:isKeyPressed("r") then
+            game.map = Map:new()
+            game.player = Player:new(1.5, 1.5, 0)
+            game.weapon = Weapon:new()
+            game.enemies = {}
+            local spawnPositions = {
+                {2.5, 2.5},
+                {6.5, 6.5},
+                {10.5, 10.5}
+            }
+            for _, pos in ipairs(spawnPositions) do
+                if game.map:isValidSpawnPosition(pos[1], pos[2], 0.3) then
+                    table.insert(game.enemies, Enemy:new(pos[1], pos[2], game.player))
+                end
+            end
+            game.player.health = 100
+            game.paused = false
+            game.state = "playing"
+            game.input:setMouseLookEnabled(true)
+        elseif game.input:isKeyPressed("q") then
+            love.event.quit()
+            return
+        end
         game.input:endUpdate()
         return
     end

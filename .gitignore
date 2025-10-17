@@ -1,0 +1,39 @@
+# LÖVE build artifacts
+*.love
+*.exe
+*.dll
+*.app
+*.dylib
+*.so
+*.log
+*.tmp
+*.bak
+
+# OS/editor cruft
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.vs/
+
+# Build outputs
+build/
+dist/
+
+# Dependencies and caches
+node_modules/
+__pycache__/
+.pytest_cache/
+.env
+.venv/
+.cache/
+
+# Temp and tool folders
+tmp/
+.cursor/
+.agent-tools/
+
+love2d_docs.md
+lua5_4_docs.txt
+run.bat
+run.ps1

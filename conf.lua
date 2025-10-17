@@ -3,7 +3,7 @@
 
 function love.conf(t)
     -- Window settings
-    t.window.title = "FPS - Raycasting MVP"
+    t.window.title = "FPS"
     t.window.width = 800
     t.window.height = 600
     t.window.resizable = true

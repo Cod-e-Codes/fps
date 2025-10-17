@@ -1,4 +1,4 @@
--- FPS Raycasting MVP - Main Game Loop
+-- FPS - Main Game Loop
 -- Entry point and system orchestration
 
 local Player = require("src.player")

@@ -5,12 +5,30 @@ local Renderer = {}
 Renderer.__index = Renderer
 
 -- Constants
-local CEILING_COLOR = {0.3, 0.3, 0.3}      -- Dark gray ceiling
-local FLOOR_COLOR = {0.2, 0.2, 0.2}        -- Darker gray floor
-local WALL_COLOR_BRIGHT = {0.8, 0.8, 0.8}  -- Light gray walls
-local WALL_COLOR_DARK = {0.6, 0.6, 0.6}    -- Darker gray walls
+local CEILING_COLOR = {0.3, 0.3, 0.35}     -- Slightly bluish ceiling
+local FLOOR_COLOR = {0.18, 0.18, 0.2}      -- Slightly bluish floor
+local WALL_COLOR_BRIGHT = {0.85, 0.85, 0.9}
+local WALL_COLOR_DARK = {0.65, 0.65, 0.7}
 local CROSSHAIR_COLOR = {1.0, 1.0, 1.0}    -- White crosshair
 local HUD_COLOR = {1.0, 1.0, 1.0}          -- White HUD text
+
+-- Toon shading helpers
+local function clamp01(x)
+    if x < 0 then return 0 end
+    if x > 1 then return 1 end
+    return x
+end
+
+local function quantize(value, steps)
+    steps = steps or 3
+    local v = clamp01(value)
+    return math.ceil(v * steps) / steps
+end
+
+local function applyToonColor(baseColor, shade, steps)
+    local q = quantize(shade, steps)
+    return baseColor[1] * q, baseColor[2] * q, baseColor[3] * q
+end
 
 function Renderer:new()
     local self = setmetatable({}, Renderer)
@@ -48,13 +66,19 @@ end
 function Renderer:drawCeilingFloor(player)
     -- Calculate height offset for consistent view
     local heightOffset = (player.height - 1.6) * 100
-    
-    -- Draw ceiling (top half) - move with player height
-    love.graphics.setColor(CEILING_COLOR)
+
+    -- Simple fake light direction effect via vertical gradient then quantize
+    local steps = 4
+    -- Ceiling
+    local ceilingShade = 0.85
+    local r, g, b = applyToonColor(CEILING_COLOR, ceilingShade, steps)
+    love.graphics.setColor(r, g, b)
     love.graphics.rectangle("fill", 0, heightOffset, self.screenWidth, self.halfHeight)
-    
-    -- Draw floor (bottom half) - move with player height
-    love.graphics.setColor(FLOOR_COLOR)
+
+    -- Floor
+    local floorShade = 0.75
+    r, g, b = applyToonColor(FLOOR_COLOR, floorShade, steps)
+    love.graphics.setColor(r, g, b)
     love.graphics.rectangle("fill", 0, self.halfHeight + heightOffset, self.screenWidth, self.halfHeight)
 end
 
@@ -62,17 +86,12 @@ end
 function Renderer:drawWalls(rays, player)
     for i, ray in ipairs(rays) do
         if ray.hit then
-            -- Calculate wall color based on distance and side
-            local brightness = math.max(0.2, 1.0 - (ray.distance / 15.0))
-            local wallColor = WALL_COLOR_BRIGHT
-            
-            -- Make Y-walls slightly darker
-            if ray.side == 1 then
-                wallColor = WALL_COLOR_DARK
-            end
-            
-            -- Apply distance-based shading
-            love.graphics.setColor(wallColor[1] * brightness, wallColor[2] * brightness, wallColor[3] * brightness)
+            -- Base color varies by wall side
+            local wallColor = (ray.side == 1) and WALL_COLOR_DARK or WALL_COLOR_BRIGHT
+            -- Distance-based brightness (fake N·L proxy), then toon quantize
+            local brightness = math.max(0.15, 1.0 - (ray.distance / 15.0))
+            local r, g, b = applyToonColor(wallColor, brightness, 4)
+            love.graphics.setColor(r, g, b)
             
             -- Apply height offset only for wall rendering
             local heightOffset = (player.height - 1.6) * 100
@@ -251,33 +270,47 @@ end
 
 -- Draw HUD (health, ammo, etc.)
 function Renderer:drawHUD(player, weapon, debugMode)
-    love.graphics.setFont(self.font)
+    love.graphics.setFont(self.smallFont)
     love.graphics.setColor(HUD_COLOR)
-    
-    -- Health
-    love.graphics.print("Health: " .. math.floor(player.health or 100), 10, 10)
-    
-    -- Ammo (magazine + reserve)
+
+    -- Minimal text-only HUD in top-left
+    local x, y = 10, 10
+    local health = math.max(0, math.floor(player.health or 100))
+    love.graphics.print("HP " .. health, x, y)
+
+    -- Thin accent bar for HP
+    local hpw = 120
+    love.graphics.setColor(0.2, 0.9, 0.3, 0.9)
+    love.graphics.rectangle("fill", x, y + 14, hpw * math.min(1, health / 100), 3)
+
+    -- Ammo line
+    love.graphics.setColor(HUD_COLOR)
     if weapon.getAmmoInfo then
         local info = weapon:getAmmoInfo()
-        local ammoText = string.format("Ammo: %d/%d  |  Reserve: %d", info.inMag, info.magSize, info.reserve)
-        love.graphics.print(ammoText, 10, 35)
+        local ammoText = string.format("AMMO %d/%d | %d", info.inMag or 0, info.magSize or 0, info.reserve or 0)
+        love.graphics.print(ammoText, x, y + 24)
         if info.isReloading then
-            love.graphics.print("Reloading...", 10, 55)
+            love.graphics.setColor(1.0, 1.0, 0.0)
+            love.graphics.print("Reloading...", x + 150, y + 24)
         end
     end
-    
-    -- Debug indicator (positioned to not overlap)
-    if debugMode then
-        love.graphics.setColor(1.0, 1.0, 0.0)  -- Yellow for debug
-        love.graphics.print("DEBUG MODE ACTIVE", self.screenWidth - 200, 35)
-        love.graphics.setColor(HUD_COLOR)  -- Reset to white
-    end
-    
-    -- FPS (if available)
+
+    -- Small FPS top-right
     if love.timer then
         local fps = love.timer.getFPS()
-        love.graphics.print("FPS: " .. fps, self.screenWidth - 100, 10)
+        local text = "FPS: " .. fps
+        local tw = self.smallFont:getWidth(text)
+        love.graphics.setColor(1, 1, 0.3)
+        love.graphics.print(text, self.screenWidth - tw - 10, 10)
+    end
+
+    -- Debug tag (top-right under FPS)
+    if debugMode then
+        local tag = "DEBUG"
+        local tw = self.smallFont:getWidth(tag)
+        love.graphics.setColor(1.0, 1.0, 0.0)
+        love.graphics.print(tag, self.screenWidth - tw - 10, 26)
+        love.graphics.setColor(HUD_COLOR)
     end
 end
 
@@ -452,3 +485,4 @@ function Renderer:hasLineOfSight(x1, y1, x2, y2, map)
 end
 
 return Renderer
+

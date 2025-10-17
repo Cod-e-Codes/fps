@@ -2,6 +2,8 @@
 
 A first-person shooter built with LÖVE (Lua).
 
+![Screenshot](assets/screenshot.png)
+
 ## Requirements
 
 - LÖVE 11.5 or higher
@@ -39,7 +41,8 @@ Or drag the project folder onto the LÖVE executable.
 │   └── input.lua      # Input handling
 └── assets/
     ├── arms.png       # Weapon sprite
-    └── enemy.png      # Enemy sprite
+    ├── enemy.png      # Enemy sprite
+    └── screenshot.png # Gameplay screenshot
 ```
 
 ## License

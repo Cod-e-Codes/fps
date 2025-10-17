@@ -9,15 +9,16 @@ local FIRE_RATE = 0.2  -- Seconds between shots
 local MUZZLE_FLASH_DURATION = 0.1  -- Seconds
 local RECOIL_INTENSITY = 0.5
 local RECOIL_DECAY = 8.0
-local MAX_AMMO = 50
+local MAGAZINE_SIZE = 17 -- Glock 17 standard magazine
 local DAMAGE = 25
 
 function Weapon:new()
     local self = setmetatable({}, Weapon)
     
-    -- Weapon state
-    self.currentAmmo = MAX_AMMO
-    self.maxAmmo = MAX_AMMO
+    -- Ammo state (realistic magazine + reserve)
+    self.magSize = MAGAZINE_SIZE
+    self.currentInMag = MAGAZINE_SIZE
+    self.reserveAmmo = MAGAZINE_SIZE * 2  -- two spare mags (34 rounds)
     self.lastFireTime = 0
     self.isReloading = false
     self.reloadTime = 0
@@ -59,20 +60,31 @@ function Weapon:update(dt, input)
         self.firing = false
     end
     
+    -- Manual reload input
+    if input:isKeyPressed("r") then
+        self:reload()
+    end
+
     -- Handle reloading
     if self.isReloading then
         self.reloadTime = self.reloadTime + dt
         if self.reloadTime >= self.reloadDuration then
             self.isReloading = false
             self.reloadTime = 0
-            self.currentAmmo = self.maxAmmo
+            -- Fill magazine from reserve
+            local needed = self.magSize - self.currentInMag
+            if needed > 0 and self.reserveAmmo > 0 then
+                local toLoad = math.min(needed, self.reserveAmmo)
+                self.currentInMag = self.currentInMag + toLoad
+                self.reserveAmmo = self.reserveAmmo - toLoad
+            end
         end
     end
 end
 
 -- Check if weapon can fire
 function Weapon:canFire()
-    return self.currentAmmo > 0 and 
+    return self.currentInMag > 0 and 
            self.fireCooldown <= 0 and 
            not self.isReloading
 end
@@ -85,8 +97,8 @@ function Weapon:fire(player, enemies, map)
     
     -- Firing weapon
     
-    -- Consume ammo
-    self.currentAmmo = self.currentAmmo - 1
+    -- Consume one round from magazine
+    self.currentInMag = self.currentInMag - 1
     
     -- Set fire cooldown
     self.fireCooldown = FIRE_RATE
@@ -111,7 +123,7 @@ function Weapon:fire(player, enemies, map)
         local enemy = hitResult.hitEnemy
         if enemy and enemy.takeDamage then
             enemy:takeDamage(DAMAGE)
-            print("Hit enemy for " .. DAMAGE .. " damage!")
+            if DEBUG then print("Hit enemy for " .. DAMAGE .. " damage!") end
         end
     end
     
@@ -276,17 +288,19 @@ end
 
 -- Start reload
 function Weapon:reload()
-    if not self.isReloading and self.currentAmmo < self.maxAmmo then
-        self.isReloading = true
-        self.reloadTime = 0
-    end
+    if self.isReloading then return end
+    if self.currentInMag >= self.magSize then return end
+    if self.reserveAmmo <= 0 then return end
+    self.isReloading = true
+    self.reloadTime = 0
 end
 
 -- Get ammo info
 function Weapon:getAmmoInfo()
     return {
-        current = self.currentAmmo,
-        max = self.maxAmmo,
+        inMag = self.currentInMag,
+        magSize = self.magSize,
+        reserve = self.reserveAmmo,
         isReloading = self.isReloading,
         reloadProgress = self.reloadTime / self.reloadDuration
     }

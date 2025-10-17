@@ -210,10 +210,10 @@ function Player:takeDamage(damage)
     self.health = (self.health or 100) - damage
     if self.health <= 0 then
         self.health = 0
-        print("Player died!")
+        if DEBUG then print("Player died!") end
         -- Could add game over logic here
     else
-        print("Player took " .. damage .. " damage! Health: " .. self.health)
+        if DEBUG then print("Player took " .. damage .. " damage! Health: " .. self.health) end
     end
 end
 

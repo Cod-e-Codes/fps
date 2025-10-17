@@ -75,7 +75,7 @@ function Enemy:update(dt, map, player)
     
     -- Debug output for enemy movement
     if oldState ~= self.state then
-        print("Enemy at (" .. string.format("%.2f", self.x) .. ", " .. string.format("%.2f", self.y) .. ") changed state from " .. oldState .. " to " .. self.state)
+        if DEBUG then print("Enemy at (" .. string.format("%.2f", self.x) .. ", " .. string.format("%.2f", self.y) .. ") changed state from " .. oldState .. " to " .. self.state) end
     end
     
     -- Apply movement
@@ -139,7 +139,7 @@ function Enemy:attackPlayer()
     -- Deal damage to player
     if self.player.takeDamage then
         self.player:takeDamage(ENEMY_ATTACK_DAMAGE)
-        print("Enemy attacked player for " .. ENEMY_ATTACK_DAMAGE .. " damage!")
+        if DEBUG then print("Enemy attacked player for " .. ENEMY_ATTACK_DAMAGE .. " damage!") end
     end
 end
 
@@ -202,7 +202,7 @@ end
 -- Take damage
 function Enemy:takeDamage(damage)
     self.health = self.health - damage
-    print("Enemy took " .. damage .. " damage! Health: " .. self.health .. "/" .. self.maxHealth)
+    if DEBUG then print("Enemy took " .. damage .. " damage! Health: " .. self.health .. "/" .. self.maxHealth) end
     
     if self.health <= 0 then
         self:die()
@@ -212,7 +212,7 @@ end
 -- Die
 function Enemy:die()
     self.state = STATE_DEAD
-    print("Enemy died!")
+    if DEBUG then print("Enemy died!") end
 end
 
 -- Check if enemy is dead

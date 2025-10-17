@@ -21,11 +21,16 @@ local game = {
     debug = false,
     fps = 0,
     frameTime = 0,
-    lastTime = 0
+    lastTime = 0,
+    paused = false,
+    state = "menu" -- menu | playing | paused | dead | win
 }
 
+-- Global debug flag for gating console output
+_G.DEBUG = false
+
 function love.load()
-    print("Loading FPS...")
+    if DEBUG then print("Loading FPS...") end
     
     -- Load weapon images
     local arms = love.graphics.newImage("assets/arms.png")
@@ -60,30 +65,32 @@ function love.load()
     for _, pos in ipairs(spawnPositions) do
         if game.map:isValidSpawnPosition(pos[1], pos[2], 0.3) then
             table.insert(game.enemies, Enemy:new(pos[1], pos[2], game.player))
-            print("Spawned enemy at (" .. pos[1] .. ", " .. pos[2] .. ")")
+            if DEBUG then print("Spawned enemy at (" .. pos[1] .. ", " .. pos[2] .. ")") end
         else
-            print("Invalid spawn position (" .. pos[1] .. ", " .. pos[2] .. ") - skipping")
+            if DEBUG then print("Invalid spawn position (" .. pos[1] .. ", " .. pos[2] .. ") - skipping") end
         end
     end
     
     -- Add health to player
     game.player.health = 100
     
-    -- Set mouse mode for FPS controls
-    love.mouse.setRelativeMode(true)
-    love.mouse.setGrabbed(true)
+    -- Start in menu (do not grab mouse yet)
+    love.mouse.setRelativeMode(false)
+    love.mouse.setGrabbed(false)
     
     -- Initialize timing
     game.lastTime = love.timer.getTime()
     
-    print("Game loaded successfully!")
-    print("Controls:")
-    print("  WASD / Arrow Keys - Move")
-    print("  Mouse - Look around")
-    print("  Left Click - Shoot")
-    print("  F3 - Toggle debug info")
-    print("  ESC - Release mouse")
-    print("  Q - Quit game")
+    if DEBUG then
+        print("Game loaded successfully!")
+        print("Controls:")
+        print("  WASD / Arrow Keys - Move")
+        print("  Mouse - Look around")
+        print("  Left Click - Shoot")
+        print("  F3 - Toggle debug info")
+        print("  ESC - Pause")
+        print("  Q - Quit game")
+    end
 end
 
 function love.update(dt)
@@ -94,6 +101,64 @@ function love.update(dt)
     -- Handle input
     game.input:update()
     
+    -- State transitions
+    if game.state == "menu" then
+        if game.input:isKeyPressed("return") or game.input:isKeyPressed("enter") then
+            game.state = "playing"
+            game.paused = false
+            game.input:setMouseLookEnabled(true)
+        end
+        game.input:endUpdate()
+        return
+    end
+
+    if game.state == "dead" or game.state == "win" then
+        if game.input:isKeyPressed("q") then
+            love.event.quit()
+            return
+        end
+        if game.input:isKeyPressed("r") then
+            -- Restart: reinitialize player/enemies/weapon
+            game.map = Map:new()
+            game.player = Player:new(1.5, 1.5, 0)
+            game.weapon = Weapon:new()
+            game.enemies = {}
+            local spawnPositions = {
+                {2.5, 2.5},
+                {6.5, 6.5},
+                {10.5, 10.5}
+            }
+            for _, pos in ipairs(spawnPositions) do
+                if game.map:isValidSpawnPosition(pos[1], pos[2], 0.3) then
+                    table.insert(game.enemies, Enemy:new(pos[1], pos[2], game.player))
+                end
+            end
+            game.player.health = 100
+            game.state = "playing"
+            game.input:setMouseLookEnabled(true)
+        end
+        game.input:endUpdate()
+        return
+    end
+
+    -- Pause toggle while playing or paused
+    if (game.state == "playing" or game.state == "paused") and game.input:isKeyPressed("escape") then
+        if game.state == "playing" then
+            game.paused = true
+            game.state = "paused"
+            game.input:setMouseLookEnabled(false)
+        else
+            game.paused = false
+            game.state = "playing"
+            game.input:setMouseLookEnabled(true)
+        end
+    end
+
+    if game.state == "paused" then
+        game.input:endUpdate()
+        return
+    end
+
     -- Update game systems
     game.player:update(dt, game.map, game.input)
     game.weapon:update(dt, game.input)
@@ -117,13 +182,25 @@ function love.update(dt)
     -- Handle debug toggle
     if game.input:isKeyPressed("f3") then
         game.debug = not game.debug
-        print("Debug mode toggled: " .. tostring(game.debug))
+        _G.DEBUG = game.debug
+        if DEBUG then print("Debug mode toggled: " .. tostring(game.debug)) end
     end
     
-    -- Handle mouse release
-    if game.input:isKeyPressed("escape") then
-        love.mouse.setRelativeMode(false)
-        love.mouse.setGrabbed(false)
+    -- (ESC is handled for pause toggle above)
+
+    -- Death detection
+    if (game.player.health or 100) <= 0 then
+        game.state = "dead"
+        game.paused = false
+        game.input:setMouseLookEnabled(false)
+    end
+
+    -- Win detection (all enemies defeated)
+    if #game.enemies == 0 then
+        game.state = "win"
+        game.input:setMouseLookEnabled(false)
+        game.input:endUpdate()
+        return
     end
     
     -- End input update cycle
@@ -146,8 +223,31 @@ function love.draw()
     -- Render weapon
     game.renderer:drawWeapon(game.weapon, game.weaponImages)
     
+    -- Overlays based on state
+    if game.state == "menu" then
+        if game.renderer.drawStartOverlay then game.renderer:drawStartOverlay() end
+        return
+    end
+
     -- Render HUD
     game.renderer:drawHUD(game.player, game.weapon, game.debug)
+
+    -- Pause overlay
+    if game.state == "paused" then
+        if game.renderer.drawPauseOverlay then
+            game.renderer:drawPauseOverlay()
+        end
+        return
+    end
+
+    if game.state == "dead" then
+        if game.renderer.drawDeathOverlay then game.renderer:drawDeathOverlay() end
+        return
+    end
+    if game.state == "win" then
+        if game.renderer.drawWinOverlay then game.renderer:drawWinOverlay() end
+        return
+    end
     
     -- Render debug info
     if game.debug then
@@ -172,6 +272,15 @@ function love.keypressed(key)
     
     -- Handle key presses for input system
     game.input:onKeyPressed(key)
+end
+
+function love.mousepressed(x, y, button)
+    -- Ignore recapture while not playing
+    if game.state ~= "playing" then return end
+    -- Re-capture mouse when the user clicks inside the window after releasing it
+    if not love.mouse.getRelativeMode() or not love.mouse.isGrabbed() then
+        game.input:setMouseLookEnabled(true)
+    end
 end
 
 function love.resize(w, h)

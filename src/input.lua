@@ -76,7 +76,7 @@ function Input:onKeyPressed(key)
     
     -- Debug output for F3 key
     if key == "f3" or key == "F3" then
-        print("F3 key pressed: " .. key)
+        if DEBUG then print("F3 key pressed: " .. key) end
     end
 end
 

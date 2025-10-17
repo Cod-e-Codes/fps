@@ -155,8 +155,8 @@ function Renderer:drawBillboard(enemy, player, map, rays, enemyImage)
         local imageWidth = enemyImage:getWidth()
         local imageHeight = enemyImage:getHeight()
         
-        -- Calculate scale to maintain aspect ratio
-        local scaleX = spriteSize / imageWidth
+        -- Calculate scale; make enemies slightly wider for better readability
+        local scaleX = (spriteSize / imageWidth) * 1.08  -- +8% width
         local scaleY = spriteHeight / imageHeight
         
         -- Draw the enemy image
@@ -257,8 +257,15 @@ function Renderer:drawHUD(player, weapon, debugMode)
     -- Health
     love.graphics.print("Health: " .. math.floor(player.health or 100), 10, 10)
     
-    -- Ammo
-    love.graphics.print("Ammo: " .. weapon.currentAmmo .. "/" .. weapon.maxAmmo, 10, 35)
+    -- Ammo (magazine + reserve)
+    if weapon.getAmmoInfo then
+        local info = weapon:getAmmoInfo()
+        local ammoText = string.format("Ammo: %d/%d  |  Reserve: %d", info.inMag, info.magSize, info.reserve)
+        love.graphics.print(ammoText, 10, 35)
+        if info.isReloading then
+            love.graphics.print("Reloading...", 10, 55)
+        end
+    end
     
     -- Debug indicator (positioned to not overlap)
     if debugMode then
@@ -287,6 +294,95 @@ function Renderer:drawCrosshair()
     
     -- Draw center dot
     love.graphics.circle("fill", centerX, centerY, 2)
+end
+
+-- Draw pause overlay
+function Renderer:drawPauseOverlay()
+    local w, h = self.screenWidth, self.screenHeight
+    love.graphics.setColor(0, 0, 0, 0.5)
+    love.graphics.rectangle("fill", 0, 0, w, h)
+
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.setFont(self.font)
+    local msg = "Paused"
+    local sub = "Press ESC to resume"
+    local msgW = self.font:getWidth(msg)
+    local msgH = self.font:getHeight()
+    love.graphics.print(msg, (w - msgW) / 2, h * 0.4)
+    love.graphics.setFont(self.smallFont)
+    local subW = self.smallFont:getWidth(sub)
+    love.graphics.print(sub, (w - subW) / 2, h * 0.4 + msgH + 10)
+end
+
+-- Draw start/menu overlay
+function Renderer:drawStartOverlay()
+    local w, h = self.screenWidth, self.screenHeight
+    love.graphics.setColor(0, 0, 0, 0.6)
+    love.graphics.rectangle("fill", 0, 0, w, h)
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.setFont(self.font)
+    local title = "FPS"
+    local tW = self.font:getWidth(title)
+    local tH = self.font:getHeight()
+    love.graphics.print(title, (w - tW) / 2, h * 0.35)
+    love.graphics.setFont(self.smallFont)
+    local msg = "Press Enter to Start"
+    local mW = self.smallFont:getWidth(msg)
+    love.graphics.print(msg, (w - mW) / 2, h * 0.35 + tH + 12)
+end
+
+-- Draw death overlay
+function Renderer:drawDeathOverlay()
+    local w, h = self.screenWidth, self.screenHeight
+    love.graphics.setColor(0, 0, 0, 0.6)
+    love.graphics.rectangle("fill", 0, 0, w, h)
+    love.graphics.setColor(1, 0.2, 0.2, 1)
+    love.graphics.setFont(self.font)
+    local msg = "You Died"
+    local mW = self.font:getWidth(msg)
+    local mH = self.font:getHeight()
+    love.graphics.print(msg, (w - mW) / 2, h * 0.35)
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.setFont(self.smallFont)
+    local sub1 = "Press R to Restart"
+    local sub2 = "Press Q to Quit"
+    local thanks = "Thanks for playing!"
+    local y = h * 0.35 + mH + 12
+    local sW1 = self.smallFont:getWidth(sub1)
+    love.graphics.print(sub1, (w - sW1) / 2, y)
+    y = y + 18
+    local sW2 = self.smallFont:getWidth(sub2)
+    love.graphics.print(sub2, (w - sW2) / 2, y)
+    y = y + 24
+    local tW = self.smallFont:getWidth(thanks)
+    love.graphics.print(thanks, (w - tW) / 2, y)
+end
+
+-- Draw win overlay
+function Renderer:drawWinOverlay()
+    local w, h = self.screenWidth, self.screenHeight
+    love.graphics.setColor(0, 0, 0, 0.6)
+    love.graphics.rectangle("fill", 0, 0, w, h)
+    love.graphics.setColor(0.6, 1, 0.6, 1)
+    love.graphics.setFont(self.font)
+    local msg = "You Win!"
+    local mW = self.font:getWidth(msg)
+    local mH = self.font:getHeight()
+    love.graphics.print(msg, (w - mW) / 2, h * 0.35)
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.setFont(self.smallFont)
+    local sub1 = "Press R to Restart"
+    local sub2 = "Press Q to Quit"
+    local thanks = "Thanks for playing!"
+    local y = h * 0.35 + mH + 12
+    local sW1 = self.smallFont:getWidth(sub1)
+    love.graphics.print(sub1, (w - sW1) / 2, y)
+    y = y + 18
+    local sW2 = self.smallFont:getWidth(sub2)
+    love.graphics.print(sub2, (w - sW2) / 2, y)
+    y = y + 24
+    local tW = self.smallFont:getWidth(thanks)
+    love.graphics.print(thanks, (w - tW) / 2, y)
 end
 
     -- Draw debug information
